@@ -1,4 +1,5 @@
 import argparse
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -24,13 +25,13 @@ class Http_Data(object):
         if self.method == "GET":
             try:
                 req_result = "OK"
-                requests.get(url, headers=self.headers, proxies=PROXY)
+                requests.get(url, headers=self.headers, proxies=PROXY,timeout=2)
             except Exception:
                 req_result = "FAILED"
         else:
             try:
                 req_result = "OK"
-                requests.post(url, headers=self.headers, data=self.body, proxies=PROXY)
+                requests.post(url, headers=self.headers, data=self.body, proxies=PROXY,timeout=TIME_OUT)
             except Exception:
                 req_result = "FAILED"
 
@@ -60,9 +61,9 @@ def parse_logfile(http_d_0: Http_Data, file_line: str = None):
     http_request = parts[REQUEST_INDEX].strip()[1:-2]
     if http_request[0:3] == "POS" or http_request[0:3] == "GET":
         if http_d_0.flag == 1:
-            time.sleep(0.01)
-            pool.submit(http_d_0.replay, )
-
+            time.sleep(SLEEP)
+            task=pool.submit(http_d_0.replay, )
+            task_list.append(task)
         request_line = http_request.split("\\n")[0].strip()
         method = request_line.split(" ")[0]
         path = request_line.split(" ")[1]
@@ -103,7 +104,7 @@ def file_load(log_path):
             line = f1.readline()
             if line:
                 count += 1
-                logger.info("load line count %s " % (count))
+                logger.info("load line count %s " % count)
 
                 http_d_0 = parse_logfile(http_d_0, line)
 
@@ -119,8 +120,10 @@ def file_load(log_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='access_log Parse Replay v1.0.0 by toby')
     parser.add_argument('-p', '--proxy', metavar='proxy', type=str, help='send requests to server PROXY')
-    parser.add_argument('-t', '--thread', metavar='int', type=int, help=' Thread nums (default 10)')
+    parser.add_argument('-t', '--thread', metavar='int', type=int, help=' 线程数 (默认 10)')
     parser.add_argument('-f', '--file', metavar='logfile', type=str, required=True, help='access log file')
+    parser.add_argument('-o', '--TIME_OUT', metavar='int', type=int, required=False,default=0.1, help='http request 超时时间(默认 0.1)')
+    parser.add_argument('-s', '--SLEEP', metavar='int', type=int, required=False,default=0.001, help='线程间 间隔时间(默认 0.001)')
     args = parser.parse_args()
 
     # 代理
@@ -135,11 +138,25 @@ if __name__ == '__main__':
     TIME_INDEX = 2
     REQUEST_INDEX = 5
     LINE_SPLIT = "--"
+    TIME_OUT = args.TIME_OUT #http request 超时时间
+    SLEEP=args.SLEEP  #线程间 间隔时间
 
+    task_list=[]
     # 多线程
     lock = threading.Lock()
     max_workers = args.thread if args.thread else 10
     logger.info("thread count is {}".format(max_workers))
     pool = ThreadPoolExecutor(max_workers=10)
 
-    file_load(args.file)
+    try:
+        file_load(args.file)
+    except KeyboardInterrupt:
+
+        logger.remove()  # 删去import logger之后自动产生的handler，不删除的话会出现重复输出的现象
+        handler_id = logger.add(sys.stderr, level="CRITICAL")
+        logger.critical("正在shutdown... 待停止线程{}".format(len(task_list)))
+        for i in task_list:
+            i.cancel()
+
+    except Exception as e:
+        logger.critical(e)
