@@ -103,6 +103,10 @@ def file_load(log_path):
         while True:
             line = f1.readline()
             if line:
+                for future in task_list:
+                    if future.done():
+                        task_list.remove(future)
+
                 count += 1
                 logger.info("load line count %s " % count)
 
