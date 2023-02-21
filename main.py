@@ -3,7 +3,6 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from pprint import pprint
 import requests
 from loguru import logger
 
