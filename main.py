@@ -46,15 +46,18 @@ def parse_logfile(http_d_0: Http_Data, file_line: str = None):
     """
 
     line = file_line
-    parts = line.split("--")
+    parts = line.split(LINE_SPLIT)
 
+    #时间
     time_text = parts[TIME_INDEX].strip()[1:-1]
     request_time = datetime.strptime(time_text, "%Y.%m.%d %H:%M:%S")
 
+    #主机
     host = parts[HOST_INDEX]
     if host[0] == ":":
         host = "127.0.0.1" + host.strip()
 
+    #http请求包解析
     http_request = parts[REQUEST_INDEX].strip()[1:-2]
     if http_request[0:3] == "POS" or http_request[0:3] == "GET":
         if http_d_0.flag == 1:
@@ -90,7 +93,7 @@ def parse_logfile(http_d_0: Http_Data, file_line: str = None):
         return http_d_0
     # print(http_request)
 
-
+#加载监测文件增量
 def file_load(log_path):
     count = 0
     position = 0
@@ -132,6 +135,7 @@ if __name__ == '__main__':
     HOST_INDEX = 0
     TIME_INDEX = 2
     REQUEST_INDEX = 5
+    LINE_SPLIT = "--"
 
     # 多线程
     lock = threading.Lock()
